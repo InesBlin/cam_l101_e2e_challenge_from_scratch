@@ -1,0 +1,4 @@
+# -*- coding: utf-8 -*-
+pandas==0.25.3
+tensorflow==2.0.0
+pyyaml==5.1.2

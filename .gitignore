@@ -1,0 +1,9 @@
+# -*- coding: utf-8 -*-
+.vscode
+__pycache__
+*.pyc
+venv
+training_checkpoints
+build
+cam_l101_ml_for_nlp_e2e_challenge_from_scratch.egg-info
+dist
