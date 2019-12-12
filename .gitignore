@@ -7,3 +7,7 @@ training_checkpoints
 build
 cam_l101_ml_for_nlp_e2e_challenge_from_scratch.egg-info
 dist
+training_checkpoints_
+training_checkpoints__
+training_checkpoints_first
+translate

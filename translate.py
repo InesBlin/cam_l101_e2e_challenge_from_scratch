@@ -3,38 +3,26 @@ import os
 import re
 import numpy as np
 import tensorflow as tf
+from matplotlib import ticker
+import matplotlib.pyplot as plt
 from helpers.helpers_tensor import max_length
 from helpers.helpers_sent import preprocess_sentence
 from pre_process.create_dataset import load
 from model.encoder import Encoder
 from model.attention import BahdanauAttention
 from model.decoder import Decoder
-from settings import TRAIN_PATH_PRE_PROCESSED
+from config.config import ConfigTrain
+from config.settings import TRAIN_PATH_PRE_PROCESSED, MAIN_CONFIG_PATH
 
-# Try experimenting with the size of that dataset
-num_examples = 5000
-mr_tensor, nl_tensor, mr_lang, nl_lang = load(path=TRAIN_PATH_PRE_PROCESSED, num_examples=num_examples)
-print(mr_lang.word_index)
+config = ConfigTrain(main_config_path=MAIN_CONFIG_PATH, train_path=TRAIN_PATH_PRE_PROCESSED)
 
-# Calculate max_length of the target tensors
-max_length_nl, max_length_mr = max_length(nl_tensor), max_length(mr_tensor)
-print(max_length_nl, max_length_mr)
-
-# Creating dataset
-BUFFER_SIZE = len(mr_tensor)
-BATCH_SIZE = 64
-steps_per_epoch = len(mr_tensor)//BATCH_SIZE
-embedding_dim = 256
-units = 1024
-vocab_mr_size = len(mr_lang.word_index)+1
-vocab_nl_size = len(nl_lang.word_index)+1
 # Write encoder and decoder model
-encoder = Encoder(vocab_mr_size, embedding_dim, units, BATCH_SIZE)
-decoder = Decoder(vocab_nl_size, embedding_dim, units, BATCH_SIZE)
+encoder = Encoder(config.vocab_mr_size, config.embedding_dim, config.units, config.batch_size)
+decoder = Decoder(config.vocab_nl_size, config.embedding_dim, config.units, config.batch_size)
 
 
 def evaluate(sentence):
-  attention_plot = np.zeros((max_length_nl, max_length_mr))
+  attention_plot = np.zeros((config.max_length_nl, config.max_length_mr))
 
   # sentence = preprocess_sentence(sentence)
   
@@ -47,46 +35,44 @@ def evaluate(sentence):
 
   pre_inputs = [elt.lower() for elt in pre_inputs]
 
-#   for w in pre_inputs:
-#     w = re.sub(r"([?.!,¿])", r" \1 ", w)
-#     w = re.sub(r'[" "]+', " ", w)
-#     w = re.sub(r"[^a-zA-Z?.!,¿0-9£]+", " ", w)
-#     w = w.rstrip().strip()
-#     w = w.lower()
+  #   for w in pre_inputs:
+  #     w = re.sub(r"([?.!,¿])", r" \1 ", w)
+  #     w = re.sub(r'[" "]+', " ", w)
+  #     w = re.sub(r"[^a-zA-Z?.!,¿0-9£]+", " ", w)
+  #     w = w.rstrip().strip()
+  #     w = w.lower()
   
-  print(pre_inputs)
-  inputs = [mr_lang.word_index[elt] for elt in pre_inputs]
+  # print(pre_inputs)
+  inputs = [config.mr_lang.word_index[elt] for elt in pre_inputs]
 
 
   inputs = tf.keras.preprocessing.sequence.pad_sequences([inputs],
-                                                         maxlen=max_length_mr,
+                                                         maxlen=config.max_length_mr,
                                                          padding='post')
   inputs = tf.convert_to_tensor(inputs)
-  print(inputs)
+  # print(inputs)
 
   result = ''
 
-  hidden = [tf.zeros((1, units))]
+  hidden = [tf.zeros((1, config.units))]
   enc_out, enc_hidden = encoder(inputs, hidden)
 
   dec_hidden = enc_hidden
-  dec_input = tf.expand_dims([nl_lang.word_index['<start>']], 0)
+  dec_input = tf.expand_dims([config.nl_lang.word_index['name']], 0)
 
-  for t in range(max_length_nl):
-    predictions, dec_hidden, attention_weights = decoder(dec_input,
-                                                         dec_hidden,
-                                                         enc_out)
+  for _ in range(config.max_length_nl):
+    predictions, dec_hidden, _ = decoder(dec_input, dec_hidden, enc_out)
 
     # storing the attention weights to plot later on
     # attention_weights = tf.reshape(attention_weights, (-1, ))
     # attention_plot[t] = attention_weights.numpy()
 
     predicted_id = tf.argmax(predictions[0]).numpy()
-    print(predicted_id, nl_lang.index_word[predicted_id])
+    # print(predicted_id, nl_lang.index_word[predicted_id])
 
-    result += nl_lang.index_word[predicted_id] + ' '
+    result += config.nl_lang.index_word[predicted_id] + ' '
 
-    if nl_lang.index_word[predicted_id] == '<end>':
+    if config.nl_lang.index_word[predicted_id] == '<end>':
       return result, sentence, attention_plot
 
     # the predicted ID is fed back into the model
@@ -113,7 +99,7 @@ def plot_attention(attention, sentence, predicted_sentence):
 
 
 def translate(sentence):
-  result, sentence, attention_plot = evaluate(sentence)
+  result, sentence, _ = evaluate(sentence)
 
   print('Input: %s' % (sentence))
   print('Predicted translation: {}'.format(result))
@@ -123,7 +109,7 @@ def translate(sentence):
 
 
 optimizer = tf.keras.optimizers.Adam()
-checkpoint_dir = './training_checkpoints'
+checkpoint_dir = './training_checkpoints_'
 checkpoint_prefix = os.path.join(checkpoint_dir, "ckpt")
 checkpoint = tf.train.Checkpoint(optimizer=optimizer,
                                  encoder=encoder,
@@ -132,4 +118,4 @@ checkpoint = tf.train.Checkpoint(optimizer=optimizer,
 # restoring the latest checkpoint in checkpoint_dir
 checkpoint.restore(tf.train.latest_checkpoint(checkpoint_dir))
 
-translate('name[Taste of Cambridge], eatType[restaurant], priceRange[£20-25], customer rating[3 out of 5]')
+translate('name[X-name], eatType[pub], food[English], priceRange[cheap], near[X-near]')
