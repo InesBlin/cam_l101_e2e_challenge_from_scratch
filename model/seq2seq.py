@@ -3,11 +3,22 @@ import os
 from datetime import datetime
 import tensorflow as tf
 import numpy as np
+import pandas as pd
 from model.encoder import Encoder
 from model.attention import BahdanauAttention
 from model.decoder import Decoder
 from helpers.helpers_tensor import loss_function
-from pre_process.create_dataset import create_tensor
+from pre_process.create_dataset import create_tensor, create_list_mr
+
+
+def pre_process_sent(sentence):
+    slot_value_list = sentence.split(', ')
+    pre_inputs = []
+    for slot_value in slot_value_list:
+        begin_val, end_val = slot_value.find('['), slot_value.find(']')
+        slot, value = slot_value[:begin_val], slot_value[begin_val+1:end_val]
+        pre_inputs += [slot, value]
+    return pre_inputs
 
 
 class Seq2SeqModel:
@@ -33,7 +44,7 @@ class Seq2SeqModel:
 
         self.decoder = Decoder(config.vocab_nl_size, config.embedding_dim, 
                                config.units, config.batch_size)
-        self.sample_decoder_output, _, _ = self.decoder.call(tf.random.uniform((64, 1)), self.sample_hidden, self.sample_output)
+        self.sample_decoder_output, _, _ = self.decoder.call(tf.random.uniform((config.batch_size, 1)), self.sample_hidden, self.sample_output)
 
         # Checkpoint
         self.checkpoint_prefix = os.path.join(config.checkpoint_dir, "ckpt")
@@ -97,17 +108,10 @@ class Seq2SeqModel:
                                                 float(total_loss) / self.config.steps_per_epoch))
             print('Time taken for 1 epoch {} sec\n'.format(datetime.now() - start))
     
-    def evaluate(self, sentence):
+    def evaluate(self, sentence_input_list, sentence_raw):
         attention_plot = np.zeros((self.config.max_length_nl, self.config.max_length_mr))
-        
-        slot_value_list = sentence.split(', ')
-        pre_inputs = []
-        for slot_value in slot_value_list:
-            begin_val, end_val = slot_value.find('['), slot_value.find(']')
-            slot, value = slot_value[:begin_val], slot_value[begin_val+1:end_val]
-            pre_inputs += [slot, value]
 
-        pre_inputs = [elt.lower() for elt in pre_inputs]
+        pre_inputs = [elt.lower() for elt in sentence_input_list]
         inputs_ = [self.config.mr_lang.word_index[elt] for elt in pre_inputs]
         inputs = tf.keras.preprocessing.sequence.pad_sequences([inputs_],
                                                                 maxlen=self.config.max_length_mr,
@@ -116,6 +120,8 @@ class Seq2SeqModel:
         result = ''
         hidden = [tf.zeros((1, self.config.units))]
         enc_out, enc_hidden = self.encoder.call(inputs, hidden)
+        print(enc_out)
+        print(enc_hidden)
 
         dec_hidden = enc_hidden
         dec_input = tf.expand_dims([self.config.nl_lang.word_index['<start>']], 0)
@@ -133,21 +139,40 @@ class Seq2SeqModel:
             result += self.config.nl_lang.index_word[predicted_id] + ' '
 
             if self.config.nl_lang.index_word[predicted_id] == '<end>':
-                return result, sentence, attention_plot
+                return result, sentence_raw, attention_plot
 
             # the predicted ID is fed back into the model
             dec_input = tf.expand_dims([predicted_id], 0)
 
-        return result, sentence, attention_plot
+        return result, sentence_raw, attention_plot
     
     def restore_checkpoint(self):
         self.checkpoint.restore(tf.train.latest_checkpoint(self.config.checkpoint_dir))
 
-    def translate(self, sentence):
+    def generate(self, sentence_raw):
         # self.checkpoint.restore(tf.train.latest_checkpoint(self.config.checkpoint_dir))
-        result, sentence, _ = self.evaluate(sentence)
+        sent_inp_l = pre_process_sent(sentence_raw)
+        result, sentence, _ = self.evaluate(sent_inp_l, sentence_raw)
 
         print('Input: %s' % (sentence))
         print('Predicted translation: {}'.format(result))
+
+        return result
+    
+    def generate_sent(self, path_to_file, fold_to_save, file_name):
+        mr_raw, mr_input = create_list_mr(path_to_file=path_to_file, num_example=self.config.num_examples)
+        res = {'mr':[], 'ref': []}
+
+        for index, mr_raw in enumerate(mr_raw):
+            gen_sent, _, _ = self.evaluate(sentence_input_list=mr_input[index], sentence_raw=mr_raw)
+            res['mr'].append(mr_raw)
+            res['ref'].append(gen_sent)
+        
+        df = pd.DataFrame(res)
+        df.to_csv(fold_to_save+file_name, index=False, sep=',')
+        
+
+
+
 
                 

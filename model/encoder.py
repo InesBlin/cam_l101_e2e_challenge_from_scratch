@@ -14,9 +14,8 @@ class Encoder(tf.keras.Model):
 
     def call(self, x, hidden):
         x = self.embedding(x)
-        #output, state = self.gru(x, initial_state = hidden)
-        #return output, state
-        return self.gru(x, initial_state = hidden)
+        output, state = self.gru(x, initial_state = hidden)
+        return output, state
 
     def initialize_hidden_state(self):
         return tf.zeros((self.batch_sz, self.enc_units))

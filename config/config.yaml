@@ -1,6 +1,6 @@
 num_examples: None
-batch_size: 64
-embedding_dim: 256
-units: 1024
+batch_size: 20  # 64  6 
+embedding_dim: 50  # 256  8
+units: 128  # 1024  10
 epochs: 10
 checkpoint_dir: './training_checkpoints'

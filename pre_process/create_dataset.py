@@ -18,6 +18,20 @@ def create_list(path_to_file, num_example):
     return mr, nl
 
 
+def create_list_mr(path_to_file, num_example):
+    df = pd.read_csv(path_to_file, sep=',', encoding='UTF-8')
+    mr_raw, mr_input = [], []
+    num_example = float('inf') if num_example is None else num_example
+
+    for index, row in df.iterrows():
+        if index < num_example:
+            curr_da = InputModelTrain(row)
+            curr_da.pre_process()
+            mr_raw.append(curr_da.input_raw)
+            mr_input.append(curr_da.input_encoder)
+    return mr_raw, mr_input
+
+
 def load(path, num_examples=None):
     # creating cleaned input, output pairs
     mr, nl = create_list(path, num_examples)

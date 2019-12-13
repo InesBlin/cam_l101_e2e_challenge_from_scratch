@@ -11,3 +11,8 @@ training_checkpoints_
 training_checkpoints__
 training_checkpoints_first
 translate
+e2e-dataset/generated-sent/
+e2e-dataset/pre-processed-data/sample-test.csv
+e2e-metrics-master/
+training_checkpoints_10000/
+training_checkpoints_all/

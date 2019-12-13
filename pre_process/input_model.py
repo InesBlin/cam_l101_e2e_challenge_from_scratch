@@ -8,6 +8,7 @@ class InputModelTrain:
         self.mention_repr = mention_repr
         self.nl_pre_processed = None
         self.input_encoder = []
+        self.input_raw = self.row['mr']
     
     def transform_mention_repr(self):
         slot_value_list = self.row['mr'].split(', ')
@@ -21,7 +22,10 @@ class InputModelTrain:
         return self
     
     def pre_process_nl(self):
-        self.nl_pre_processed = preprocess_sentence(self.row['ref'])
+        try:
+            self.nl_pre_processed = preprocess_sentence(self.row['ref'])
+        except:
+            pass
         return self
     
     def pre_process(self):
