@@ -3,4 +3,6 @@ batch_size: 20  # 64  6
 embedding_dim: 50  # 256  8
 units: 128  # 1024  10
 epochs: 10
-checkpoint_dir: './training_checkpoints'
+checkpoint_dir: './training_checkpoints_baseline'
+decoder_type: 'beam_search'
+beam_size: 10 # beam size of 1 corresponds to greedy search

@@ -23,6 +23,8 @@ class ConfigTrain:
         self.units = int(main_config['units'])
         self.epochs = int(main_config['epochs'])
         self.checkpoint_dir = main_config['checkpoint_dir']
+        self.decoder_type = main_config['decoder_type']
+        self.beam_size = main_config['beam_size']
 
         self.mr_tensor, self.nl_tensor, self.mr_lang, self.nl_lang = load(path=train_path, 
                                                                           num_examples=self.num_examples)

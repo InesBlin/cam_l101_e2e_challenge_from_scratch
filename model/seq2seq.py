@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from model.encoder import Encoder
 from model.attention import BahdanauAttention
-from model.decoder import Decoder
+from model.decoder import DecoderBase, DecoderGreedy, DecoderBeam
 from helpers.helpers_tensor import loss_function
 from pre_process.create_dataset import create_tensor, create_list_mr
 
@@ -41,9 +41,8 @@ class Seq2SeqModel:
 
         self.attention_layer = BahdanauAttention(10)
         self.attention_result, self.attention_weights = self.attention_layer(self.sample_hidden, self.sample_output)
-
-        self.decoder = Decoder(config.vocab_nl_size, config.embedding_dim, 
-                               config.units, config.batch_size)
+        self.decoder = DecoderBeam(config.vocab_nl_size, config.embedding_dim, 
+                                   config.units, config.batch_size, config.beam_size)
         self.sample_decoder_output, _, _ = self.decoder.call(tf.random.uniform((config.batch_size, 1)), self.sample_hidden, self.sample_output)
 
         # Checkpoint
@@ -109,7 +108,6 @@ class Seq2SeqModel:
             print('Time taken for 1 epoch {} sec\n'.format(datetime.now() - start))
     
     def evaluate(self, sentence_input_list, sentence_raw):
-        attention_plot = np.zeros((self.config.max_length_nl, self.config.max_length_mr))
 
         pre_inputs = [elt.lower() for elt in sentence_input_list]
         inputs_ = [self.config.mr_lang.word_index[elt] for elt in pre_inputs]
@@ -117,32 +115,17 @@ class Seq2SeqModel:
                                                                 maxlen=self.config.max_length_mr,
                                                                 padding='post')
         inputs = tf.convert_to_tensor(inputs)
-        result = ''
         hidden = [tf.zeros((1, self.config.units))]
         enc_out, enc_hidden = self.encoder.call(inputs, hidden)
-        print(enc_out)
-        print(enc_hidden)
 
         dec_hidden = enc_hidden
         dec_input = tf.expand_dims([self.config.nl_lang.word_index['<start>']], 0)
 
-        for t in range(self.config.max_length_nl):
-            predictions, dec_hidden, attention_weights = self.decoder.call(dec_input,
-                                                                           dec_hidden,
-                                                                           enc_out)
-
-            # storing the attention weights to plot later on
-            attention_weights = tf.reshape(attention_weights, (-1, ))
-            attention_plot[t] = attention_weights.numpy()
-
-            predicted_id = tf.argmax(predictions[0]).numpy()
-            result += self.config.nl_lang.index_word[predicted_id] + ' '
-
-            if self.config.nl_lang.index_word[predicted_id] == '<end>':
-                return result, sentence_raw, attention_plot
-
-            # the predicted ID is fed back into the model
-            dec_input = tf.expand_dims([predicted_id], 0)
+        result, sentence_raw, attention_plot = self.decoder.decode_path(config=self.config, 
+                                                                        init_layers={'dec_input': dec_input, 
+                                                                                     'dec_hidden': dec_hidden, 
+                                                                                     'enc_out': enc_out}, 
+                                                                        sentence_raw=sentence_raw)
 
         return result, sentence_raw, attention_plot
     
@@ -156,6 +139,7 @@ class Seq2SeqModel:
 
         print('Input: %s' % (sentence))
         print('Predicted translation: {}'.format(result))
+        print('===')
 
         return result
     
