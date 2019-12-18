@@ -1,0 +1,76 @@
+name: ['x name']
+near: ['x near']
+eattype:
+  pub: ['pub'] 
+  coffee_shop: ['coffee shop', 'coffee', 'coffee-shop']
+  restaurant: ['restaurant']
+pricerange: 
+  more_than_£30: ['start at £30', 'start at thirty pounds', 'start at 30 pounds',
+                  'more than £30', 'more than thirty pounds', 'more than 30 pounds', 'more than L30',
+                  'higher than £30', 'higher than thirty pounds', 'higher than 30 pounds',
+                  'over £30', 'over thirty pounds', 'over 30 pounds',
+                  'over thirty', 'over 30',
+                  'thirty and up', '30 and up']
+  cheap: ['cheap', 'frugally priced', 
+          'low priced', 'low prices', 'inexpensive', 'low price range']  # 'inexpensive', 'low price range' used for `cheap` and `less than 20`
+  less_than_£20: ['less than £20', 'less than 20', 'less than twenty', 'less than L20',
+                  'lower than £20', 'lower than twenty pounds', 'lower than 20 pounds',
+                  'under £20', 'under twenty pounds', 'under 20 pounds',
+                  'under twenty', 'under 20', 
+                  'twenty and less', '20 and less']
+  £20-25: ['£20-£25', '£20-25', '20-£25', '20-25', '£20-26',
+           '£20 - £25', '£20 - 25', '20 - 25',
+           'between 20 and 25', 'between twenty and twenty five',
+           '£20 to £25', '20 to 25', 'twenty to twenty five'] 
+  moderate: ['moderately', 'moderate', 'mid-price', 'fair priced', 'affordable', 'mid price', 'reasonably', 'medium']
+  high: ['high price', 'high pricing', 'high priced', 'high-priced',
+         'upscale', 'expensive', 'expensive-priced']
+customer_rating: 
+  5_out_of_5: ['5 star', 'five star', 
+               '5-star', 'five-star',
+               '5 out of 5', 'five out of five'] 
+  low: ['low rated', 'low rating',
+        'low customer rating', 'poor customer rating',
+        'customer ratings are quite low', 'customer rating is quite low',
+        'customer ratings are low', 'customer rating is low',
+        'rated it poorly']
+  high: ['high rated', 'high rating',
+         'high customer rating', 'highly rated',
+         'customer ratings are quite high', 'customer rating is quite high',
+         'customer ratings are high', 'customer rating is high',
+         'high reviews', 'highly recommended', 'highly rated', 'high-end',
+         'great reviews', 'greatly recommended', 'greatly rated']  # for last two lines found for `5 out of 5`
+  average: ['customer rating however is only average', 'customer rating is average',
+            'average rated', 'average rating', 'averagely rated',
+            'average customer rating',
+            'customer ratings are quite average', 'customer rating is quite average',
+            'customer ratings are average', 'customer rating is average',
+            'rated it averagely', 'rated average']
+  3_out_of_5: ['3 star', 'three star', 
+               '3-star', 'three-star',
+               '3 out of 5', 'three out of five'] 
+  1_out_of_5: ['1 star', 'one star', 
+               '1-star', 'one-star',
+               '1 out of 5', 'one out of five'] 
+food: 
+  english: ['english', 'british']  # 'eggs and beans'
+  japanese: ['japanese']  # 'sushi'
+  french: ['french']  # 'wine' 'cheese' 'fondue' 
+  fast_food: ['fast food']
+  italian: ['italian']
+  indian: ['indian']
+  chinese: ['chinese']
+area: 
+  riverside: ['riverside', 'river']
+  city_centre: ['city center', 'city centre', 'center', 'centre']
+familyfriendly:
+  yes: ['is family friendly', 'is family-friendly',
+        'is child friendly', 'is child-friendly',
+        'a family friendly', 'a family-friendly',
+        'a child friendly', 'a child-friendly',
+        'is kid friendly', 'is kid-friendly']
+  no: ['not family friendly', 'not family-friendly',
+       'not child friendly', 'not child-friendly',
+       'not kid friendly', 'not kid-friendly',
+       'adults', 'adult',
+       'not recommended to take children']

@@ -6,7 +6,8 @@ import numpy as np
 import pandas as pd
 from model.encoder import Encoder
 from model.attention import BahdanauAttention
-from model.decoder import DecoderBase, DecoderGreedy, DecoderBeam
+from model.decoder import DecoderBase, DecoderBeam
+from model.reranker import ReRankerBase
 from helpers.helpers_tensor import loss_function
 from pre_process.create_dataset import create_tensor, create_list_mr
 
@@ -44,6 +45,7 @@ class Seq2SeqModel:
         self.decoder = DecoderBeam(config.vocab_nl_size, config.embedding_dim, 
                                    config.units, config.batch_size, config.beam_size)
         self.sample_decoder_output, _, _ = self.decoder.call(tf.random.uniform((config.batch_size, 1)), self.sample_hidden, self.sample_output)
+        self.reranker = ReRankerBase(config.reranker_type, config.gazetteer_reranker)
 
         # Checkpoint
         self.checkpoint_prefix = os.path.join(config.checkpoint_dir, "ckpt")
@@ -121,11 +123,13 @@ class Seq2SeqModel:
         dec_hidden = enc_hidden
         dec_input = tf.expand_dims([self.config.nl_lang.word_index['<start>']], 0)
 
-        result, sentence_raw, attention_plot = self.decoder.decode_path(config=self.config, 
-                                                                        init_layers={'dec_input': dec_input, 
-                                                                                     'dec_hidden': dec_hidden, 
-                                                                                     'enc_out': enc_out}, 
-                                                                        sentence_raw=sentence_raw)
+        stored_sent = self.decoder.decode_path(config=self.config, 
+                                               init_layers={'dec_input': dec_input, 
+                                                            'dec_hidden': dec_hidden, 
+                                                            'enc_out': enc_out}, 
+                                               sentence_raw=sentence_raw)
+
+        result, attention_plot = self.reranker.get_best(sentence_input_list, stored_sent)
 
         return result, sentence_raw, attention_plot
     

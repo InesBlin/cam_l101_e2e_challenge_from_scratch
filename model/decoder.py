@@ -90,7 +90,6 @@ class DecoderBeam(DecoderBase):
                         if curr_sent.ended:
                             finished_sent.append(curr_sent)
                             if len(finished_sent) == self.beam_size:
-                                stored_sent = finished_sent
                                 continue_search = False
                         else:
                             curr_pred, curr_dec_hidden, curr_att_w = self.call(curr_sent.dec_input,
@@ -116,10 +115,9 @@ class DecoderBeam(DecoderBase):
                     to_find = self.beam_size - len(finished_sent)
                     scores = [sent.score for sent in new_stored]
                     best_scores_indexes = sorted(range(len(scores)), key = lambda sub: scores[sub])[-to_find:]
-                    stored_sent = [new_stored[i] for i in best_scores_indexes]
-                
-        final_index = sorted(range(len(stored_sent)), key = lambda sub: scores[sub])[-1:][0]
-        result, sentence_raw, attention_plot = stored_sent[final_index].res, sentence_raw, stored_sent[final_index].att_plot
-        return result, sentence_raw, attention_plot
+                    stored_sent = [new_stored[i] for i in best_scores_indexes] 
+        
+        stored_sent = stored_sent + finished_sent
+        return stored_sent
 
     
