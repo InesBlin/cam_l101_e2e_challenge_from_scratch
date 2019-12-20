@@ -28,6 +28,7 @@ class ConfigTrain:
         self.reranker_type = main_config['reranker_type']
         with open(main_config['gazetteer_reranker'], encoding='utf8') as file:
             self.gazetteer_reranker = yaml.load(file, Loader=yaml.FullLoader)
+        self.pointer_generator = main_config['pointer_generator']
 
         self.mr_tensor, self.nl_tensor, self.mr_lang, self.nl_lang = load(path=train_path, 
                                                                           num_examples=self.num_examples)

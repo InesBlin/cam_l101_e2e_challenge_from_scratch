@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from model.encoder import Encoder
 from model.attention import BahdanauAttention
-from model.decoder import DecoderBase, DecoderBeam
+from model.decoder import DecoderBeam
 from model.reranker import ReRankerBase
 from helpers.helpers_tensor import loss_function
 from pre_process.create_dataset import create_tensor, create_list_mr
@@ -25,46 +25,31 @@ def pre_process_sent(sentence):
 class Seq2SeqModel:
 
     def __init__(self, config, optimizer, loss_object):
+        # General parameters
         self.config = config
+        mr_vocab_size = len(self.config.mr_lang.word_index)
+        self.config.mr_lang.word_index['UNK'] = mr_vocab_size + 1
         self.optimizer = optimizer
         self.loss_object = loss_object
-
         self.dataset = create_tensor(mr_tensor=config.mr_tensor, nl_tensor=config.nl_tensor, 
                                      buffer_size=config.buffer_size, batch_size=config.batch_size)
-        self.example_input_batch, _ = next(iter(self.dataset))
 
-        # Write encoder and decoder model
+        # Encoder
         self.encoder = Encoder(config.vocab_mr_size, config.embedding_dim, 
                                config.units, config.batch_size)
-        # sample input
-        self.sample_hidden = self.encoder.initialize_hidden_state()
-        self.sample_output, self.sample_hidden = self.encoder.call(self.example_input_batch, self.sample_hidden)
 
-        self.attention_layer = BahdanauAttention(10)
-        self.attention_result, self.attention_weights = self.attention_layer(self.sample_hidden, self.sample_output)
+        # Decoder
         self.decoder = DecoderBeam(config.vocab_nl_size, config.embedding_dim, 
-                                   config.units, config.batch_size, config.beam_size)
-        self.sample_decoder_output, _, _ = self.decoder.call(tf.random.uniform((config.batch_size, 1)), self.sample_hidden, self.sample_output)
+                                   config.units, config.batch_size, config.beam_size, 
+                                   config.nl_lang.word_index, config.nl_lang.index_word,
+                                   config.pointer_generator)
         self.reranker = ReRankerBase(config.reranker_type, config.gazetteer_reranker)
 
         # Checkpoint
         self.checkpoint_prefix = os.path.join(config.checkpoint_dir, "ckpt")
-        self.checkpoint = tf.train.Checkpoint(optimizer=self.optimizer,
-                                              encoder=self.encoder,
-                                              decoder=self.decoder)
-
-    def print_info_shape(self):
-        print ('Encoder output shape: (batch size, sequence length, units) {}'
-                    .format(self.sample_output.shape))
-        print ('Encoder Hidden state shape: (batch size, units) {}'
-                    .format(self.sample_hidden.shape))
-        print("Attention result shape: (batch size, units) {}"
-                    .format(self.attention_result.shape))
-        print("Attention weights shape: (batch_size, sequence_length, 1) {}"
-                    .format(self.attention_weights.shape))
-        print ('Decoder output shape: (batch_size, vocab size) {}'
-                    .format(self.sample_decoder_output.shape))
+        self.checkpoint = tf.train.Checkpoint(optimizer=self.optimizer, encoder=self.encoder, decoder=self.decoder)
     
+
     @tf.function
     def train_step(self, inp, targ, enc_hidden):
         loss = 0
@@ -77,7 +62,10 @@ class Seq2SeqModel:
             # Teacher forcing - feeding the target as the next input
             for t in range(1, targ.shape[1]):
             # passing enc_output to the decoder
-                predictions, dec_hidden, _ = self.decoder.call(dec_input, dec_hidden, enc_output)
+                predictions, dec_hidden, attention_weights, p_gen = self.decoder.call(dec_input, dec_hidden, enc_output)
+                
+                if self.config.pointer_generator:
+                    predictions = self.decoder.update_prob_ditrib_pointer(predictions, attention_weights, p_gen, inp)
                 loss += loss_function(targ[:, t], predictions, self.loss_object)
                 # using teacher forcing
                 dec_input = tf.expand_dims(targ[:, t], 1)
@@ -112,7 +100,12 @@ class Seq2SeqModel:
     def evaluate(self, sentence_input_list, sentence_raw):
 
         pre_inputs = [elt.lower() for elt in sentence_input_list]
-        inputs_ = [self.config.mr_lang.word_index[elt] for elt in pre_inputs]
+        inputs_ = []
+        for elt in pre_inputs:
+            if elt in self.config.mr_lang.word_index:
+                inputs_.append(self.config.mr_lang.word_index[elt])
+            else:
+                inputs_.append(self.config.mr_lang.word_index['UNK'])
         inputs = tf.keras.preprocessing.sequence.pad_sequences([inputs_],
                                                                 maxlen=self.config.max_length_mr,
                                                                 padding='post')
@@ -127,10 +120,15 @@ class Seq2SeqModel:
                                                init_layers={'dec_input': dec_input, 
                                                             'dec_hidden': dec_hidden, 
                                                             'enc_out': enc_out}, 
-                                               sentence_raw=sentence_raw)
+                                               sentence_raw=sentence_raw,
+                                               sentence_input_list=sentence_input_list)
 
-        result, attention_plot = self.reranker.get_best(sentence_input_list, stored_sent)
-
+        finished_sent = [sent for sent in stored_sent if sent.ended]
+        if finished_sent:
+            result, attention_plot = self.reranker.get_best(sentence_input_list, stored_sent)
+        else:
+            result, attention_plot = self.reranker.get_best(sentence_input_list, finished_sent)
+            
         return result, sentence_raw, attention_plot
     
     def restore_checkpoint(self):
