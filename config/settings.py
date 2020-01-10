@@ -28,7 +28,7 @@ CONFIG_MODEL_TRAIN = {
         'data_path': TRAIN_PATH_INIT
     },
     'test': {
-        'main_config_params': MAIN_CONFIG_TEST_PATH,
-        'data_path': TRAIN_PATH_PRE_PROCESSED_ONE_REF
+        'main_config_params': MAIN_CONFIG_DELEX_PATH,
+        'data_path': TRAIN_PATH_PRE_PROCESSED
     }
 }
