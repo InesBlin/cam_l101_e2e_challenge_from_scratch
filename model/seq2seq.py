@@ -8,7 +8,7 @@ from model.encoder import Encoder
 from model.attention import BahdanauAttention
 from model.decoder import DecoderBeam
 from model.reranker import ReRankerBase
-from helpers.helpers_tensor import loss_function
+from helpers.helpers_tensor import loss_function, loss_coverage
 from pre_process.create_dataset import create_tensor, create_list_mr
 
 
@@ -27,8 +27,9 @@ class Seq2SeqModel:
     def __init__(self, config, optimizer, loss_object):
         # General parameters
         self.config = config
-        mr_vocab_size = len(self.config.mr_lang.word_index)
-        self.config.mr_lang.word_index['UNK'] = mr_vocab_size + 1
+        # mr_vocab_size = len(self.config.mr_lang.word_index)
+        #self.config.mr_lang.word_index['UNK'] = mr_vocab_size + 1
+        self.config.mr_lang.word_index['UNK'] = None
         self.optimizer = optimizer
         self.loss_object = loss_object
         self.dataset = create_tensor(mr_tensor=config.mr_tensor, nl_tensor=config.nl_tensor, 
@@ -50,7 +51,7 @@ class Seq2SeqModel:
         self.checkpoint = tf.train.Checkpoint(optimizer=self.optimizer, encoder=self.encoder, decoder=self.decoder)
     
 
-    @tf.function
+    # @tf.function
     def train_step(self, inp, targ, enc_hidden):
         loss = 0
 
@@ -59,19 +60,30 @@ class Seq2SeqModel:
             dec_hidden = enc_hidden
             dec_input = tf.expand_dims([self.config.nl_lang.word_index['<start>']] * self.config.batch_size, 1)
 
+            if self.config.coverage_mechanism:
+                coverage_vector = tf.zeros((self.config.batch_size, self.config.max_length_mr, 1))
+            else:
+                coverage_vector = None
+
             # Teacher forcing - feeding the target as the next input
             for t in range(1, targ.shape[1]):
             # passing enc_output to the decoder
-                predictions, dec_hidden, attention_weights, p_gen = self.decoder.call(dec_input, dec_hidden, enc_output)
-                
+                predictions, dec_hidden, attention_weights, p_gen, coverage_vector = self.decoder.call(dec_input, dec_hidden, 
+                                                                                                       enc_output, coverage_vector)
                 if self.config.pointer_generator:
                     predictions = self.decoder.update_prob_ditrib_pointer(predictions, attention_weights, p_gen, inp)
+                
+                # Updating losses : general + coverage mechanism if any
                 loss += loss_function(targ[:, t], predictions, self.loss_object)
+                if self.config.coverage_mechanism:
+                    loss +=  self.config.reweight_cov_loss * loss_coverage(attention_weights, coverage_vector)
                 # using teacher forcing
                 dec_input = tf.expand_dims(targ[:, t], 1)
 
         batch_loss = (loss / int(targ.shape[1]))
         variables = self.encoder.trainable_variables + self.decoder.trainable_variables
+        # for var in variables:
+        #     print(var)
         gradients = tape.gradient(loss, variables)
         self.optimizer.apply_gradients(zip(gradients, variables))
         return batch_loss
@@ -125,9 +137,9 @@ class Seq2SeqModel:
 
         finished_sent = [sent for sent in stored_sent if sent.ended]
         if finished_sent:
-            result, attention_plot = self.reranker.get_best(sentence_input_list, stored_sent)
-        else:
             result, attention_plot = self.reranker.get_best(sentence_input_list, finished_sent)
+        else:
+            result, attention_plot = self.reranker.get_best(sentence_input_list, stored_sent)
             
         return result, sentence_raw, attention_plot
     
@@ -135,7 +147,6 @@ class Seq2SeqModel:
         self.checkpoint.restore(tf.train.latest_checkpoint(self.config.checkpoint_dir))
 
     def generate(self, sentence_raw):
-        # self.checkpoint.restore(tf.train.latest_checkpoint(self.config.checkpoint_dir))
         sent_inp_l = pre_process_sent(sentence_raw)
         result, sentence, _ = self.evaluate(sent_inp_l, sentence_raw)
 

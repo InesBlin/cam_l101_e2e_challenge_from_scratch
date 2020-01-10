@@ -5,23 +5,24 @@ from pre_process.input_model import InputModelTrain
 
 
 def create_slot_value(slot_value_list):
-    slot_value = {}
+    slot_value_res = {}
     for slot_value in slot_value_list:
         begin_val, end_val = slot_value.find('['), slot_value.find(']')
         slot, value = slot_value[:begin_val], slot_value[begin_val+1:end_val]
-        slot_value[slot] = value
-    return slot_value
+        slot_value_res[slot] = value
+    return slot_value_res
 
 
 def replace_delex(row_delex, slot_value):
-    delex_sent = row_delex['ref']
+    delex_sent = row_delex['ref'].values[0]
     words = delex_sent.split(' ')
     new_sent, nb_words = [], len(words)
 
     for index, word in enumerate(words):
         if (index!=nb_words-1) and (word=='x'):
             delex_val = words[index+1]
-            words[index+1] = slot_value[delex_val]
+            if delex_val in slot_value.keys():
+                words[index+1] = slot_value[delex_val]
         else:
             new_sent.append(word)
     
@@ -34,7 +35,7 @@ def convert_final(orig_mr_path, delex_sent_path, to_save_path):
     res = {'mr':[], 'ref': []}
 
     for index, row_orig in orig_mr_df.iterrows():
-        row_delex = delex_df.iloc(index)
+        row_delex = delex_df.iloc[[index]]
         slot_value = create_slot_value(row_orig['mr'].split(', '))
         res['mr'].append(row_orig['mr'])
         res['ref'].append(replace_delex(row_delex, slot_value))

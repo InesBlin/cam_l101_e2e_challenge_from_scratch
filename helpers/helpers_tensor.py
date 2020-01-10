@@ -23,3 +23,22 @@ def loss_function(real, pred, loss_object):
     loss_ *= mask
 
     return tf.reduce_mean(loss_)
+
+
+def loss_coverage(att_weights, cov_vector):
+    att_weights = tf.squeeze(att_weights).numpy()
+    cov_vector = tf.squeeze(cov_vector).numpy()
+
+    loss = 0
+    nb_l = att_weights.shape[0]
+    for i in range(nb_l):
+        curr_att_w = att_weights[i, :]
+        curr_cov_vector = att_weights[i, :]
+
+        for index, val in enumerate(curr_att_w):
+            if val <= curr_cov_vector[index]:
+                loss += val
+            else:
+                loss += curr_cov_vector[index]
+    
+    return loss

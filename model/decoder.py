@@ -12,6 +12,7 @@ class DecoderBase(tf.keras.Model):
         self.beam_size = beam_size
         self.nl_lang_word_index = nl_lang_word_index
         self.nl_lang_index_word = nl_lang_index_word
+        self.embedding_dim = embedding_dim
         self.embedding = tf.keras.layers.Embedding(vocab_size, embedding_dim)
         self.gru = tf.keras.layers.GRU(self.dec_units,
                                        return_sequences=True,
@@ -29,10 +30,10 @@ class DecoderBase(tf.keras.Model):
         self.Wx = tf.keras.layers.Dense(1)  # learnable param for p_gen => decoder input
         
 
-    def call(self, x, hidden, enc_output):
+    def call(self, x, hidden, enc_output, coverage_vector=None):
         dec_input = x
         # enc_output shape == (batch_size, max_length, hidden_size)
-        context_vector, attention_weights = self.attention(hidden, enc_output)
+        context_vector, attention_weights, coverage_vector = self.attention(hidden, enc_output, coverage_vector)
         # x shape after passing through embedding == (batch_size, 1, embedding_dim)
         x = self.embedding(x)
         # x shape after concatenation == (batch_size, 1, embedding_dim + hidden_size)
@@ -49,7 +50,7 @@ class DecoderBase(tf.keras.Model):
         # output shape == (batch_size, vocab)
         x = self.fc(output)
 
-        return x, state, attention_weights, p_gen
+        return x, state, attention_weights, p_gen, coverage_vector
 
 
 class DecoderBeam(DecoderBase):
@@ -60,12 +61,13 @@ class DecoderBeam(DecoderBase):
                          nl_lang_word_index, nl_lang_index_word, pointer_generator)
     
     class SentInfo():
-        def __init__(self, att_plot, res, dec_input, dec_hidden, enc_out, score, ended):
+        def __init__(self, att_plot, res, dec_input, dec_hidden, enc_out, cov_vector, score, ended):
             self.att_plot = att_plot
             self.res = res
             self.dec_input = dec_input
             self.dec_hidden = dec_hidden
             self.enc_out = enc_out
+            self.cov_vector = cov_vector
             self.score = score
             self.ended = ended
     
@@ -96,14 +98,14 @@ class DecoderBeam(DecoderBase):
         return final_distrib
 
 
-    def init_decode_path(self, config, dec_input, dec_hidden, enc_out, sentence_input_list):
+    def init_decode_path(self, config, dec_input, dec_hidden, enc_out, sentence_input_list, coverage_vector):
         stored_sent = []
         att_plot=np.zeros((config.max_length_nl, config.max_length_mr))
-
-        predictions, dec_hidden, attention_weights, p_gen = self.call(dec_input, dec_hidden, enc_out)
+        predictions, dec_hidden, attention_weights, p_gen, coverage_vector = self.call(dec_input, dec_hidden, enc_out, coverage_vector)
 
         if config.pointer_generator:
             predictions = self.update_prob_ditrib_pointer(predictions, attention_weights, p_gen, sentence_input_list)
+            # self.embedding = tf.keras.layers.Embedding(len(self.nl_lang_word_index)+1, self.embedding_dim)
 
         attention_weights = tf.reshape(attention_weights, (-1, ))
         att_plot[0] = attention_weights.numpy()
@@ -113,10 +115,11 @@ class DecoderBeam(DecoderBase):
 
         for i in range(self.beam_size):
             stored_sent.append(DecoderBeam.SentInfo(att_plot=att_plot,
-                                                    res=self.nl_lang_index_word[top_indices[i]] + ' ',
+                                                    res=config.nl_lang.index_word[top_indices[i]] + ' ',
                                                     dec_input=tf.expand_dims([top_indices[i]], 0),
                                                     dec_hidden=dec_hidden,
                                                     enc_out=enc_out,
+                                                    cov_vector=coverage_vector,
                                                     score=top_scores[i],
                                                     ended=False))
         return stored_sent
@@ -131,9 +134,11 @@ class DecoderBeam(DecoderBase):
         
         for step in range(config.max_length_nl):
             if step == 0:  # Initialization, taking beam_size best predictions
-                print(self.nl_lang_word_index)
-                stored_sent = self.init_decode_path(config, dec_input, dec_hidden, enc_out, sentence_input_list)
-                print(self.nl_lang_word_index)
+                if config.coverage_mechanism:
+                    coverage_vector = tf.zeros((1, config.max_length_mr, 1))
+                else:
+                    coverage_vector = None
+                stored_sent = self.init_decode_path(config, dec_input, dec_hidden, enc_out, sentence_input_list, coverage_vector)
             else:  
                 new_stored = [] 
                 for curr_sent in stored_sent:
@@ -143,11 +148,13 @@ class DecoderBeam(DecoderBase):
                             if len(finished_sent) == self.beam_size:
                                 continue_search = False
                         else:
-                            curr_pred, curr_dec_hidden, curr_att_w, p_gen = self.call(curr_sent.dec_input,
-                                                                                      curr_sent.dec_hidden,
-                                                                                      curr_sent.enc_out)  
+                            curr_pred, curr_dec_hidden, curr_att_w, p_gen, coverage_vector = self.call(curr_sent.dec_input,
+                                                                                                       curr_sent.dec_hidden,
+                                                                                                       curr_sent.enc_out,
+                                                                                                       curr_sent.cov_vector)  
                             if config.pointer_generator:
                                 curr_pred = self.update_prob_ditrib_pointer(curr_pred, curr_att_w, p_gen, sentence_input_list)
+                                # self.embedding = tf.keras.layers.Embedding(len(self.nl_lang_word_index)+1, self.embedding_dim)
 
                             curr_att_w = tf.reshape(curr_att_w, (-1, ))
                             curr_sent.att_plot[step] = curr_att_w.numpy()  
@@ -158,10 +165,11 @@ class DecoderBeam(DecoderBase):
                             for i in range(self.beam_size):
                                 is_ended = config.nl_lang.index_word[top_indices[i]] == '<end>'
                                 new_stored.append(DecoderBeam.SentInfo(att_plot=curr_sent.att_plot,
-                                                                       res=curr_sent.res + self.nl_lang_index_word[top_indices[i]] + ' ',
+                                                                       res=curr_sent.res + config.nl_lang.index_word[top_indices[i]] + ' ',
                                                                        dec_input=tf.expand_dims([top_indices[i]], 0),
                                                                        dec_hidden=curr_dec_hidden,
                                                                        enc_out=enc_out,
+                                                                       cov_vector=coverage_vector,
                                                                        score=curr_sent.score + top_scores[i],
                                                                        ended=is_ended))
                 
