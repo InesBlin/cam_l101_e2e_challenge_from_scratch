@@ -17,18 +17,3 @@ COMPAT_EVAL_MET_PATH = './e2E-dataset/compat-eval-metrics/'
 SPECIFIC_FILE_NAME = {
     'baseline': 'baseline.csv'
 }
-
-CONFIG_MODEL_TRAIN = {
-    'baseline_delex': {
-        'main_config_params': MAIN_CONFIG_DELEX_PATH,
-        'data_path': TRAIN_PATH_PRE_PROCESSED,
-    },
-    'copy_mechanism': {
-        'main_config_params': MAIN_CONFIG_COPY_MECH_PATH,
-        'data_path': TRAIN_PATH_INIT
-    },
-    'test': {
-        'main_config_params': MAIN_CONFIG_DELEX_PATH,
-        'data_path': TRAIN_PATH_PRE_PROCESSED
-    }
-}

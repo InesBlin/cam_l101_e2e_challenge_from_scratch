@@ -156,7 +156,7 @@ class Seq2SeqModel:
 
         return result
     
-    def generate_sent(self, path_to_file, fold_to_save, file_name):
+    def generate_sent(self, path_to_file, save_path):
         mr_raw, mr_input = create_list_mr(path_to_file=path_to_file, num_example=self.config.num_examples)
         res = {'mr':[], 'ref': []}
 
@@ -166,7 +166,7 @@ class Seq2SeqModel:
             res['ref'].append(gen_sent)
         
         df = pd.DataFrame(res)
-        df.to_csv(fold_to_save+file_name, index=False, sep=',')
+        df.to_csv(save_path, index=False, sep=',')
         
 
 

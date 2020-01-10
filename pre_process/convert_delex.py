@@ -89,18 +89,14 @@ def convert_to_delex(path_init, path_save):
 
 if __name__=='__main__':
     # Construct the argument parser
-    # ap = argparse.ArgumentParser()
-    # ap.add_argument("-i", "--input", required=True, help="path to data to delexicalise")
-    # args = vars(ap.parse_args())
+    ap = argparse.ArgumentParser()
+    ap.add_argument("-i", "--input", required=True, help="path to data to delexicalise")
+    args = vars(ap.parse_args())
 
-    # path_init = args['input']
-    # file_name = path_init.split('/')[-1].split('.')[0]
-    # path_save = './e2e-dataset/pre-processed-data/{0}-delex.csv'.format(file_name)
+    path_init = args['input']
+    file_name = path_init.split('/')[-1].split('.')[0]
+    path_save = './e2e-dataset/pre-processed-data/{0}-delex.csv'.format(file_name)
 
-    # if '{0}.csv'.format(file_name) not in listdir('./e2e-dataset/pre-processed-data/'):
-    #     convert_to_delex(path_init=path_init, path_save=path_save)
+    if '{0}.csv'.format(file_name) not in listdir('./e2e-dataset/pre-processed-data/'):
+        convert_to_delex(path_init=path_init, path_save=path_save)
 
-    nb_to_letter = {'1': 'one', '2': 'two', '3': 'three', '4': 'four', '5': 'five'}
-    letter_to_nb = {'one': '1', 'two': '2', 'three': '3', 'four': '4', 'five': '5'}
-    test = find_digit_letter_version('3 out of 5', nb_to_letter, letter_to_nb)
-    print(test)
