@@ -3,7 +3,7 @@ batch_size: 20  # 64  6
 embedding_dim: 50  # 256  8
 units: 128  # 1024  10
 epochs: 10
-checkpoint_dir: './training_cp/training_checkpoints_delex_coverage_all' 
+checkpoint_dir: './training_cp/training_checkpoints_delex_coverage_one_ref' 
 decoder_type: 'beam_search'
 beam_size: 10 # beam size of 1 corresponds to greedy search
 reranker_type: 'gazetteer_slug'

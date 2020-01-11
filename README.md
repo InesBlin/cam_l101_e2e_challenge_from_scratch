@@ -37,9 +37,9 @@ Several steps are necessary in order to prepare the data, train a model, generat
 * In the context of the challenge we ran the three following lines.
 
 ```python
-python pre_process/convert.py -i ./e2e-dataset/init-data/trainset.csv
-python pre_process/convert.py -i ./e2e-dataset/init-data/testset.csv
-python pre_process/convert.py -i ./e2e-dataset/init-data/devset.csv
+python pre_process/convert_delex.py -i ./e2e-dataset/init-data/trainset.csv
+python pre_process/convert_delex.py -i ./e2e-dataset/init-data/testset_w_refs.csv
+python pre_process/convert_delex.py -i ./e2e-dataset/init-data/devset.csv
 ```
 
 ##### Train a model
@@ -55,6 +55,7 @@ python pre_process/convert.py -i ./e2e-dataset/init-data/devset.csv
 
 
 * In the context of the challenge we trained several models
+Do not forget to change the path of the checkpoints
     * Name and near delexicalised - Bahdanau attention - all sentences trained
 `python ./main/train.py -config ./config/config_delex.yaml -train ./e2e-dataset/pre-processed-data/trainset-delex.csv`
     * Name and near delexicalised - Bahdanau attention - one sentence/MR trained
@@ -69,6 +70,7 @@ Each model will be trained with Adam optimizer and cross-entropy loss function.
 
 ##### Generate sentences from trained model
 To generate sentence, the script will first reload the seq2seq model and restore the last checkpoint found.
+Hence do not forget to set the right parameters for the model you trained, especially   the path of the checkpoints. 
 
 * In the context of the challenge, here are the commands we executed (devset)
     * Name and near delexicalised - Bahdanau attention - all sentences trained
@@ -76,9 +78,9 @@ To generate sentence, the script will first reload the seq2seq model and restore
     * Name and near delexicalised - Bahdanau attention - one sentence/MR trained
     `python ./main/generate.py -config ./config/config_delex.yaml -train ./e2e-dataset/pre-processed-data/trainset-delex-one-ref.csv -test ./e2e-dataset/pre-processed-data/devset-delex.csv -save ./e2e-dataset/generated-sent-delex/devset-delex-bahdanau-one-ref.csv`
     * Name and near delexicalised - Bahdanau attention with coverage mechanism - all sentences trained
-    `python ./main/generate.py -config ./config/config_delex.yaml -train ./e2e-dataset/pre-processed-data/trainset-delex.csv -test ./e2e-dataset/pre-processed-data/devset-delex.csv -save ./e2e-dataset/generated-sent-delex/devset-delex-coverage-all.csv`
+    `python ./main/generate.py -config ./config/config_delex_coverage.yaml -train ./e2e-dataset/pre-processed-data/trainset-delex.csv -test ./e2e-dataset/pre-processed-data/devset-delex.csv -save ./e2e-dataset/generated-sent-delex/devset-delex-coverage-all.csv`
     * Name and near delexicalised - Bahdanau attention with coverage mechanism - one sentence/MR trained
-    `python ./main/generate.py -config ./config/config_delex.yaml -train ./e2e-dataset/pre-processed-data/trainset-delex-one-ref.csv -test ./e2e-dataset/pre-processed-data/devset-delex.csv -save ./e2e-dataset/generated-sent-delex/devset-delex-coverage-one-ref.csv`
+    `python ./main/generate.py -config ./config/config_delex_coverage.yaml -train ./e2e-dataset/pre-processed-data/trainset-delex-one-ref.csv -test ./e2e-dataset/pre-processed-data/devset-delex.csv -save ./e2e-dataset/generated-sent-delex/devset-delex-coverage-one-ref.csv`
 
 
 ##### Post-process
