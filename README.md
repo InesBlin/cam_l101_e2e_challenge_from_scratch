@@ -87,13 +87,21 @@ Hence do not forget to set the right parameters for the model you trained, espec
 * First creating the lexicalised version of the delexicalised sentences created. (for our purpose only name and near delexicalised)
 
 Example of command to run
-`python ./post_process/convert_to_lex.py -or ./e2e-dataset/init-data/devset.csv -de ./e2e-dataset/generated-sent-delex/devset-bahdanau-delex-all.csv -s ./e2e-dataset/generated-sent-lex/devset-bahdanau-delex-all.csv`
+```python
+python ./post_process/convert_to_lex.py -or ./e2e-dataset/init-data/testset_w_refs.csv -de ./e2e-dataset/generated-sent-delex/testset-delex-bahdanau-all.csv -s ./e2e-dataset/generated-sent-lex/testset-delex-bahdanau-all.csv`
+```
+
 
 * Transform .csv file to compatible .txt file used for metrics.
 
 Example of command to run
-`python ./post_process/convert_for_metrics.py -csv ./e2e-dataset/generated-sent-lex/devset-bahdanau-delex-all.csv -txt ./e2e-dataset/compat-eval-metrics/devset-delex-bahdanau-all.txt`
+`python ./post_process/convert_for_metrics.py -csv ./e2e-dataset/generated-sent-lex/testset-delex-bahdanau-all.csv -txt ./e2e-dataset/compat-eval-metrics/testset-delex-bahdanau-all.txt`
 Transform .csv with mr and ref (whether it is the gold standards of the sentences generated from the model) to the format used by the metrics given
+
+
+##### Evaluating with automatic metrics
+We used the metrics provided by the E2E NLG Challenge, from https://github.com/tuetschek/e2e-metrics.
+As it was designed to run on Linux and we couldn't run it on Windows, we executed this part separately.
 
 Describing project architecture
 ----------------------------------
